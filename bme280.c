@@ -1,46 +1,78 @@
+/***************************************************************************
+
+This piece of code was combined from several sources
+https://github.com/adafruit/Adafruit_BME280_Library
+https://cdn-shop.adafruit.com/datasheets/BST-BME280_DS001-10.pdf
+https://projects.drogon.net/raspberry-pi/wiringpi/i2c-library/
+
+****************************************************************************/
+
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
 #include <time.h>
+#include <math.h>
 #include <wiringPiI2C.h>
 #include "bme280.h"
 
-#define BME280_ADDRESS  0x76
 int fd;
 uint32_t t_fine;
 bme280_calib_data cal;
 
 
+int main(int argc, char *argv[]) {
+
+  fd = wiringPiI2CSetup(BME280_ADDRESS);
+  if(fd < 0) {
+    printf("Device not found");
+    return -1;
+  }
+
+  cal = readCalibrationData();
+  wiringPiI2CWriteReg8(fd, 0xf2, 0x01);   // humidity oversampling x 1
+  wiringPiI2CWriteReg8(fd, 0xf4, 0x25);   // pressure and temperature oversampling x 1, mode normal
+  bme280_raw_data raw = getRawData();
+
+  float t = compensateTemperature(raw.temperature); // C
+  float p = compensatePressure(raw.pressure) / 100; // hPa
+  float h = compensateHumidity(raw.humidity);       // %
+  float a = getAltitude(p);                         // meters
+
+  printf("{\"sensor\":\"bme280\", \"humidity\":%.2f, \"pressure\":%.2f,"
+    " \"temperature\":%.2f, \"altitude\":%.2f, \"timestamp\":%d}\n",
+    h, p, t, a, (int)time(NULL));
+
+  return 0;
+}
 
 bme280_calib_data readCalibrationData() {
 
   bme280_calib_data data;
-  data.dig_T1 = (uint16_t)wiringPiI2CReadReg16(fd, 0x88);
-  data.dig_T2 = (int16_t)wiringPiI2CReadReg16(fd, 0x8A);
-  data.dig_T3 = (int16_t)wiringPiI2CReadReg16(fd, 0x8C);
+  data.dig_T1 = (uint16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_T1);
+  data.dig_T2 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_T2);
+  data.dig_T3 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_T3);
 
-  data.dig_P1 = (uint16_t)wiringPiI2CReadReg16(fd, 0x8E);
-  data.dig_P2 = (int16_t)wiringPiI2CReadReg16(fd, 0x90);
-  data.dig_P3 = (int16_t)wiringPiI2CReadReg16(fd, 0x92);
-  data.dig_P4 = (int16_t)wiringPiI2CReadReg16(fd, 0x94);
-  data.dig_P5 = (int16_t)wiringPiI2CReadReg16(fd, 0x96);
-  data.dig_P6 = (int16_t)wiringPiI2CReadReg16(fd, 0x98);
-  data.dig_P7 = (int16_t)wiringPiI2CReadReg16(fd, 0x9A);
-  data.dig_P8 = (int16_t)wiringPiI2CReadReg16(fd, 0x9C);
-  data.dig_P9 = (int16_t)wiringPiI2CReadReg16(fd, 0x9E);
+  data.dig_P1 = (uint16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P1);
+  data.dig_P2 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P2);
+  data.dig_P3 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P3);
+  data.dig_P4 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P4);
+  data.dig_P5 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P5);
+  data.dig_P6 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P6);
+  data.dig_P7 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P7);
+  data.dig_P8 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P8);
+  data.dig_P9 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_P9);
 
-  data.dig_H1 = (uint8_t)wiringPiI2CReadReg8(fd, 0xA1);
-  data.dig_H2 = (int16_t)wiringPiI2CReadReg16(fd, 0xE1);
-  data.dig_H3 = (uint8_t)wiringPiI2CReadReg8(fd, 0xE3);
-  data.dig_H4 = (wiringPiI2CReadReg8(fd, 0xE4) << 4) | (wiringPiI2CReadReg8(fd, 0xE4+1) & 0xF);
-  data.dig_H5 = (wiringPiI2CReadReg8(fd, 0xE5+1) << 4) | (wiringPiI2CReadReg8(fd, 0xE5) >> 4);
-  data.dig_H6 = (int8_t)wiringPiI2CReadReg8(fd, 0xE7);
+  data.dig_H1 = (uint8_t)wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H1);
+  data.dig_H2 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_H2);
+  data.dig_H3 = (uint8_t)wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H3);
+  data.dig_H4 = (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H4) << 4) | (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H4+1) & 0xF);
+  data.dig_H5 = (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H5+1) << 4) | (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H5) >> 4);
+  data.dig_H6 = (int8_t)wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H6);
 
   return data;
 }
 
-float compensateTemperature(uint32_t adc_T)
-{
+float compensateTemperature(uint32_t adc_T) {
   int32_t var1, var2;
 
   var1  = ((((adc_T>>3) - ((int32_t)cal.dig_T1 <<1))) *
@@ -81,7 +113,6 @@ float compensatePressure(uint32_t adc_P) {
 
 
 float compensateHumidity(uint32_t adc_H) {
-
   int32_t v_x1_u32r;
 
   v_x1_u32r = (t_fine - ((int32_t)76800));
@@ -102,10 +133,9 @@ float compensateHumidity(uint32_t adc_H) {
 }
 
 bme280_raw_data getRawData() {
-
   bme280_raw_data raw;
   
-  int error = wiringPiI2CWrite(fd, 0xf7);
+  wiringPiI2CWrite(fd, 0xf7);
 
   raw.pmsb = wiringPiI2CRead(fd);
   raw.plsb = wiringPiI2CRead(fd);
@@ -135,27 +165,13 @@ bme280_raw_data getRawData() {
   return raw;
 }
 
+float getAltitude(float pressure) {
+  // Equation taken from BMP180 datasheet (page 16):
+  //  http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
 
-int main(int argc, char *argv[]) {
+  // Note that using the equation from wikipedia can give bad results
+  // at high altitude.  See this thread for more information:
+  //  http://forums.adafruit.com/viewtopic.php?f=22&t=58064
 
-  fd = wiringPiI2CSetup(BME280_ADDRESS);  
-  cal = readCalibrationData();  
-  
-  int erno = wiringPiI2CWriteReg8(fd, 0xf2, 0x01);
-  erno = wiringPiI2CWriteReg8(fd, 0xf4, 0x25);  
-  
-  bme280_raw_data raw = getRawData();
-
-
-  float temp_f = compensateTemperature(raw.temperature);
-  float press_f = compensatePressure(raw.pressure) /100; // hPa
-  float hum_f = compensateHumidity(raw.humidity);
-
-  printf("{\"sensor\":\"bme280\", \"humidity\":%.2f, \"pressure\":%.2f, \"temperature\":%.2f, \"timestamp\":%d}\n", 
-            hum_f, press_f, temp_f, (int)time(NULL));
-
-
-  return 0;
+  return 44330.0 * (1.0 - pow(pressure / MEAN_SEA_LEVEL_PRESSURE, 0.190294957));
 }
-
-
