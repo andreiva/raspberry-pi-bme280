@@ -18,7 +18,7 @@ gcc -Wall -std=c99 -o bme280 bme280.c -lwiringPi -lm
 ```
 Copy binary to /usr/bin
 ```
-sudo cp bme280 /usr/binary
+sudo cp bme280 /usr/bin
 ```
 Now you should be able to run the program, simply by typing
 ```
