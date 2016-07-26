@@ -8,6 +8,11 @@ https://projects.drogon.net/raspberry-pi/wiringpi/i2c-library/
 Tested on RASPBIAN JESSIE LITE
 https://www.raspberrypi.org/downloads/raspbian/
 
+```
+git clone https://github.com/andreiva/raspberry-pi-bme280.git
+
+```
+
 Dependencies
 ```
 sudo apt-get install libi2c-dev i2c-tools wiringpi
