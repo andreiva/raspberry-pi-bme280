@@ -9,8 +9,22 @@ Tested on RASPBIAN JESSIE LITE
 https://www.raspberrypi.org/downloads/raspbian/
 
 Dependencies
+```
 sudo apt-get install libi2c-dev i2c-tools wiringpi
-
+```
 Compiling
+```
 gcc -Wall -std=c99 -o bme280 bme280.c -lwiringPi -lm
-
+```
+Copy binary to /usr/bin
+```
+sudo cp bme280 /usr/binary
+```
+Now you should be able to run the program, simply by typing
+```
+bme280
+```
+Output should look like this
+```
+{"sensor":"bme280", "humidity":54.36, "pressure":1011.89, "temperature":25.58, "altitude":9.23, "timestamp":1469568295}
+```
