@@ -35,7 +35,6 @@ https://projects.drogon.net/raspberry-pi/wiringpi/i2c-library/
 ****************************************************************************/
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <stdint.h>
 #include <time.h>
@@ -51,24 +50,24 @@ int main() {
     return -1;
   }
 
-  bme280_calib_data *cal = readCalibrationData(fd);
+  bme280_calib_data cal;
+  readCalibrationData(fd, &cal);
 
   wiringPiI2CWriteReg8(fd, 0xf2, 0x01);   // humidity oversampling x 1
   wiringPiI2CWriteReg8(fd, 0xf4, 0x25);   // pressure and temperature oversampling x 1, mode normal
-  bme280_raw_data *raw = getRawData(fd);
 
-  uint32_t t_fine = getTemperatureCalibration(cal, raw->temperature);
+  bme280_raw_data raw;
+  getRawData(fd, &raw);
+
+  uint32_t t_fine = getTemperatureCalibration(&cal, raw.temperature);
   float t = compensateTemperature(t_fine); // C
-  float p = compensatePressure(raw->pressure, cal, t_fine) / 100; // hPa
-  float h = compensateHumidity(raw->humidity, cal, t_fine);       // %
+  float p = compensatePressure(raw.pressure, &cal, t_fine) / 100; // hPa
+  float h = compensateHumidity(raw.humidity, &cal, t_fine);       // %
   float a = getAltitude(p);                         // meters
 
   printf("{\"sensor\":\"bme280\", \"humidity\":%.2f, \"pressure\":%.2f,"
     " \"temperature\":%.2f, \"altitude\":%.2f, \"timestamp\":%d}\n",
     h, p, t, a, (int)time(NULL));
-
-  free(raw);
-  free(cal);
 
   return 0;
 }
@@ -84,8 +83,7 @@ uint32_t getTemperatureCalibration(bme280_calib_data *cal, uint32_t adc_T) {
   return var1 + var2;
 }
 
-bme280_calib_data *readCalibrationData(int fd) {
-  bme280_calib_data *data = calloc(1, sizeof(*data));
+void readCalibrationData(int fd, bme280_calib_data *data) {
   data->dig_T1 = (uint16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_T1);
   data->dig_T2 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_T2);
   data->dig_T3 = (int16_t)wiringPiI2CReadReg16(fd, BME280_REGISTER_DIG_T3);
@@ -106,8 +104,6 @@ bme280_calib_data *readCalibrationData(int fd) {
   data->dig_H4 = (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H4) << 4) | (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H4+1) & 0xF);
   data->dig_H5 = (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H5+1) << 4) | (wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H5) >> 4);
   data->dig_H6 = (int8_t)wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H6);
-
-  return data;
 }
 
 float compensateTemperature(uint32_t t_fine) {
@@ -159,9 +155,7 @@ float compensateHumidity(uint32_t adc_H, bme280_calib_data *cal, uint32_t t_fine
   return  h / 1024.0;
 }
 
-bme280_raw_data *getRawData(int fd) {
-  bme280_raw_data *raw = calloc(1, sizeof(*raw));
-  
+void getRawData(int fd, bme280_raw_data *raw) {
   wiringPiI2CWrite(fd, 0xf7);
 
   raw->pmsb = wiringPiI2CRead(fd);
@@ -188,8 +182,6 @@ bme280_raw_data *getRawData(int fd) {
   raw->humidity = 0;
   raw->humidity = (raw->humidity | raw->hmsb) << 8;
   raw->humidity = (raw->humidity | raw->hlsb);
-
-  return raw;
 }
 
 float getAltitude(float pressure) {
