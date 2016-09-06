@@ -19,7 +19,7 @@ sudo apt-get install libi2c-dev i2c-tools wiringpi
 ```
 Compiling
 ```
-gcc -Wall -std=c99 -o bme280 bme280.c -lwiringPi -lm
+make
 ```
 Copy binary to /usr/bin
 ```
