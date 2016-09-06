@@ -72,7 +72,7 @@ https://projects.drogon.net/raspberry-pi/wiringpi/i2c-library/
 #define MEAN_SEA_LEVEL_PRESSURE       1013
 
 /*
-* Immutable calibtarion data read from bme280
+* Immutable calibration data read from bme280
 */
 typedef struct
 {

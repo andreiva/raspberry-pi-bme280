@@ -32,6 +32,21 @@ This piece of code was combined from several sources
 https://github.com/adafruit/Adafruit_BME280_Library
 https://cdn-shop.adafruit.com/datasheets/BST-BME280_DS001-10.pdf
 https://projects.drogon.net/raspberry-pi/wiringpi/i2c-library/
+
+Compensation functions and altitude function originally from:
+https://github.com/adafruit/Adafruit_BME280_Library/blob/master/Adafruit_BME280.cpp
+***************************************************************************
+  This is a library for the BME280 humidity, temperature & pressure sensor
+  Designed specifically to work with the Adafruit BME280 Breakout
+  ----> http://www.adafruit.com/products/2650
+  These sensors use I2C or SPI to communicate, 2 or 4 pins are required
+  to interface.
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit andopen-source hardware by purchasing products
+  from Adafruit!
+  Written by Limor Fried & Kevin Townsend for Adafruit Industries.
+  BSD license, all text above must be included in any redistribution
+ ***************************************************************************
 ****************************************************************************/
 
 #include <stdio.h>
