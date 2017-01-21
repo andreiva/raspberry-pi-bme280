@@ -74,7 +74,7 @@ int main() {
   bme280_raw_data raw;
   getRawData(fd, &raw);
 
-  uint32_t t_fine = getTemperatureCalibration(&cal, raw.temperature);
+  int32_t t_fine = getTemperatureCalibration(&cal, raw.temperature);
   float t = compensateTemperature(t_fine); // C
   float p = compensatePressure(raw.pressure, &cal, t_fine) / 100; // hPa
   float h = compensateHumidity(raw.humidity, &cal, t_fine);       // %
@@ -87,7 +87,7 @@ int main() {
   return 0;
 }
 
-uint32_t getTemperatureCalibration(bme280_calib_data *cal, uint32_t adc_T) {
+int32_t getTemperatureCalibration(bme280_calib_data *cal, int32_t adc_T) {
   int32_t var1  = ((((adc_T>>3) - ((int32_t)cal->dig_T1 <<1))) *
      ((int32_t)cal->dig_T2)) >> 11;
 
@@ -121,12 +121,12 @@ void readCalibrationData(int fd, bme280_calib_data *data) {
   data->dig_H6 = (int8_t)wiringPiI2CReadReg8(fd, BME280_REGISTER_DIG_H6);
 }
 
-float compensateTemperature(uint32_t t_fine) {
+float compensateTemperature(int32_t t_fine) {
   float T  = (t_fine * 5 + 128) >> 8;
   return T/100;
 }
 
-float compensatePressure(uint32_t adc_P, bme280_calib_data *cal, uint32_t t_fine) {
+float compensatePressure(int32_t adc_P, bme280_calib_data *cal, int32_t t_fine) {
   int64_t var1, var2, p;
 
   var1 = ((int64_t)t_fine) - 128000;
@@ -150,7 +150,7 @@ float compensatePressure(uint32_t adc_P, bme280_calib_data *cal, uint32_t t_fine
 }
 
 
-float compensateHumidity(uint32_t adc_H, bme280_calib_data *cal, uint32_t t_fine) {
+float compensateHumidity(int32_t adc_H, bme280_calib_data *cal, int32_t t_fine) {
   int32_t v_x1_u32r;
 
   v_x1_u32r = (t_fine - ((int32_t)76800));
